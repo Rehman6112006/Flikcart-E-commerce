@@ -1,0 +1,213 @@
+
+'use client'
+
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
+import { 
+  LayoutDashboard, 
+  Package, 
+  MapPin, 
+  User,
+  LogOut,
+  Menu,
+  X,
+  Truck,
+  ChevronLeft
+} from 'lucide-react'
+
+interface RiderLayoutProps {
+  children: React.ReactNode
+}
+
+const navItems = [
+  { name: 'Dashboard', href: '/rider/dashboard', icon: LayoutDashboard },
+  { name: 'My Orders', href: '/rider/orders', icon: Package },
+  { name: 'Location', href: '/rider/location', icon: MapPin },
+  { name: 'Profile', href: '/rider/profile', icon: User },
+]
+
+export default function RiderLayout({ children }: RiderLayoutProps) {
+  const pathname = usePathname()
+  const router = useRouter()
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  // Skip auth check for login/register pages
+  const isAuthPage = pathname === '/rider/login' || pathname === '/rider/register'
+
+  useEffect(() => {
+    if (isAuthPage) {
+      setLoading(false)
+      return
+    }
+    checkAuth()
+  }, [isAuthPage])
+
+  const checkAuth = () => {
+    const riderToken = localStorage.getItem('riderToken')
+    const riderStr = localStorage.getItem('riderData')
+    
+    if (riderToken && riderStr) {
+      try {
+        const rider = JSON.parse(riderStr)
+        setIsAuthenticated(true)
+      } catch {
+        router.push('/rider/login')
+      }
+    } else {
+      router.push('/rider/login')
+    }
+    setLoading(false)
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('riderToken')
+    localStorage.removeItem('riderData')
+    router.push('/rider/login')
+  }
+
+  // Show simple layout for auth pages
+  if (isAuthPage) {
+    return (
+      <div className="min-h-screen bg-slate-900">
+        {children}
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return null
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-900 flex">
+      {/* Desktop Sidebar */}
+      <aside 
+        className={`fixed left-0 top-0 h-full bg-slate-800 border-r border-slate-700 transition-all duration-300 z-40 flex flex-col ${
+          isSidebarOpen ? 'w-64' : 'w-20'
+        }`}
+      >
+        {/* Logo */}
+        <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+          <Link href="/rider/dashboard" className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Truck className="w-5 h-5 text-white" />
+            </div>
+            {isSidebarOpen && (
+              <span className="text-xl font-bold text-white">Rider Panel</span>
+            )}
+          </Link>
+          <button 
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-400 hidden lg:block"
+          >
+            <ChevronLeft className={`w-5 h-5 transition-transform ${!isSidebarOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+          {navItems.map((item) => {
+            const isActive = pathname === item.href || pathname.startsWith(item.href)
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all group ${
+                  isActive 
+                    ? 'bg-orange-600 text-white' 
+                    : 'text-slate-400 hover:bg-slate-700 hover:text-white'
+                }`}
+              >
+                <item.icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'}`} />
+                {isSidebarOpen && <span className="font-medium">{item.name}</span>}
+              </Link>
+            )
+          })}
+        </nav>
+
+        {/* Logout Button */}
+        <div className="p-3 border-t border-slate-700">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-colors"
+          >
+            <LogOut className="w-5 h-5 flex-shrink-0" />
+            {isSidebarOpen && <span className="font-medium">Logout</span>}
+          </button>
+        </div>
+      </aside>
+
+      {/* Mobile Header */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-slate-800 border-b border-slate-700 z-30 flex items-center justify-between px-4">
+        <Link href="/rider/dashboard" className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg flex items-center justify-center">
+            <Truck className="w-4 h-4 text-white" />
+          </div>
+          <span className="text-lg font-bold text-white">Rider</span>
+        </Link>
+        <button 
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="p-2 rounded-lg hover:bg-slate-700 text-white"
+        >
+          {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        </button>
+      </div>
+
+      {/* Mobile Navigation */}
+      {isMobileMenuOpen && (
+        <div className="lg:hidden fixed inset-0 top-16 bg-slate-800 z-20">
+          <nav className="p-4 space-y-2">
+            {navItems.map((item) => {
+              const isActive = pathname === item.href || pathname.startsWith(item.href)
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                    isActive 
+                      ? 'bg-orange-600 text-white' 
+                      : 'text-slate-400 hover:bg-slate-700 hover:text-white'
+                  }`}
+                >
+                  <item.icon className="w-5 h-5" />
+                  <span className="font-medium">{item.name}</span>
+                </Link>
+              )
+            })}
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-colors"
+            >
+              <LogOut className="w-5 h-5" />
+              <span className="font-medium">Logout</span>
+            </button>
+          </nav>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <main 
+        className={`flex-1 min-h-screen transition-all duration-300 ${
+          isSidebarOpen ? 'lg:ml-64' : 'lg:ml-20'
+        } pt-16 lg:pt-0`}
+      >
+        {children}
+      </main>
+    </div>
+  )
+}
+
+
